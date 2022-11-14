@@ -3,22 +3,21 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
-import "contracts/plugins/assets/ISTETH.sol";
+import "contracts/plugins/rocket/IRETH.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-// {tok} = wstETH  
-// {ref} = stETH
-// {target} = ETH 
+// {tok} = rETH
+// {ref} = ETH
+// {target} = ETH
 // {UoA} = USD
 
 /**
- * @title STETH Collateral. stETH-ETH peg insured.
- * @notice Collateral plugin for wstETH collateral that requires default checks. 
- * Expected: {tok} != {ref}, {ref} != {target}, {target} != {UoA}
+ * @title RETH Collateral
+ * @notice Collateral plugin for rETH collateral that requires default checks,
+ * like rETH. Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-
-contract STETHPeggedCollateral is Collateral {
+contract RETHCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -29,8 +28,6 @@ contract STETHPeggedCollateral is Collateral {
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-
-    int8 public immutable referenceERC20Decimals;
 
     /// @param refUnitChainlinkFeed_ Feed units: {target/ref}
     /// @param targetUnitUSDChainlinkFeed_ Feed units: {UoA/target}
@@ -48,8 +45,7 @@ contract STETHPeggedCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_
+        uint256 delayUntilDefault_
     )
         Collateral(
             fallbackPrice_,
@@ -68,28 +64,22 @@ contract STETHPeggedCollateral is Collateral {
             "missing target unit chainlink feed"
         );
         require(address(rewardERC20_) != address(0), "rewardERC20 missing");
-        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         defaultThreshold = defaultThreshold_;
         targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
-        referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+        // {UoA/tok} = {UoA/target} * {ref/tok}; target == ref
         return
             targetUnitChainlinkFeed
-                .price(oracleTimeout)                       // {USD/ETH}
-                .mul(chainlinkFeed.price(oracleTimeout))    // {ETH/stETH}
-                .mul(refPerTok());                          // {stETH/wstETH}
+            .price(oracleTimeout).mul(refPerTok()); // {USD/ETH} // {ETH/rETH}
     }
 
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
-        // == Refresh ==
-
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
@@ -99,29 +89,7 @@ contract STETHPeggedCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
-            // p {target/ref} {ETH/stETH}
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                // We don't need the return value from this next feed, but it should still function
-                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192) {
-                    // {target/ref}
-                    uint192 peg = targetPerRef();
-
-                    // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                    uint192 delta = (peg * defaultThreshold) / FIX_ONE;
-
-                    // If the price is below the default-threshold price, default eventually
-                    // uint192(+/-) is the same as Fix.plus/minus
-                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                    else markStatus(CollateralStatus.SOUND);
-                } catch (bytes memory errData) {
-                    // see: docs/solidity-style.md#Catching-Empty-Data
-                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                    markStatus(CollateralStatus.IFFY);
-                }
-            } catch (bytes memory errData) {
-                if (errData.length == 0) revert(); // solhint-disable-line reason-stringjust
-                markStatus(CollateralStatus.IFFY);
-            }
+            markStatus(CollateralStatus.SOUND);
         }
         prevReferencePrice = referencePrice;
 
@@ -135,7 +103,7 @@ contract STETHPeggedCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        uint256 rate = ISTETH(address(erc20)).stEthPerToken();
+        uint256 rate = IRETH(address(erc20)).getExchangeRate();
         return shiftl_toFix(rate, 18);
     }
 
@@ -143,5 +111,4 @@ contract STETHPeggedCollateral is Collateral {
     function pricePerTarget() public view override returns (uint192) {
         return targetUnitChainlinkFeed.price(oracleTimeout);
     }
-
 }

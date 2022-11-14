@@ -3,21 +3,22 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
-import "contracts/plugins/assets/IRETH.sol";
+import "contracts/plugins/lido/ISTETH.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-// {tok} = rETH
-// {ref} = ETH
-// {target} = ETH
-// {UoA} = USD
+// {tok}    = wstETH // collateral
+// {ref}    = stETH // 1.1 stETH = wstETH ---> 1.3 stETH = wstETH
+// {target} = ETH --> 1 stETH == 1 ETH
+// {UoA}    = USD
 
 /**
- * @title RETH Collateral
- * @notice Collateral plugin for rETH collateral that requires default checks,
- * like rETH. Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
+ * @title STETH Pegged Collateral. stETH-ETH peg not insured.
+ * @notice Collateral plugin for wstETH collateral that requires default checks.
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract RETHCollateral is Collateral {
+
+contract STETHCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -76,15 +77,18 @@ contract RETHCollateral is Collateral {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/target} * {ref/tok}; target == ref
+        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} = {USD/wstETH}
         return
             targetUnitChainlinkFeed
-            .price(oracleTimeout).mul(refPerTok()); // {USD/ETH} // {ETH/rETH}
+            .price(oracleTimeout) // {USD/ETH}
+            .mul(chainlinkFeed.price(oracleTimeout)).mul(refPerTok()); // {ETH/stETH} // {stETH/wstETH}
     }
 
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
+        // == Refresh ==
+
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
@@ -108,7 +112,7 @@ contract RETHCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        uint256 rate = IRETH(address(erc20)).getExchangeRate();
+        uint256 rate = ISTETH(address(erc20)).stEthPerToken();
         return shiftl_toFix(rate, 18);
     }
 
