@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/plugins/rocket/IRETH.sol";
-import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
 // {tok} = rETH
@@ -29,7 +28,6 @@ contract RETHCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    /// @param refUnitChainlinkFeed_ Feed units: {target/ref}
     /// @param targetUnitUSDChainlinkFeed_ Feed units: {UoA/target}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -37,7 +35,6 @@ contract RETHCollateral is Collateral {
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
         uint192 fallbackPrice_,
-        AggregatorV3Interface refUnitChainlinkFeed_,
         AggregatorV3Interface targetUnitUSDChainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
@@ -49,7 +46,7 @@ contract RETHCollateral is Collateral {
     )
         Collateral(
             fallbackPrice_,
-            refUnitChainlinkFeed_,
+            targetUnitUSDChainlinkFeed_,
             erc20_,
             rewardERC20_,
             maxTradeVolume_,
@@ -58,23 +55,20 @@ contract RETHCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(
-            address(targetUnitUSDChainlinkFeed_) != address(0),
-            "missing target unit chainlink feed"
-        );
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
+        // require(defaultThreshold_ > 0, "defaultThreshold zero");
+        // require(
+        //     address(targetUnitUSDChainlinkFeed_) != address(0),
+        //     "missing target unit chainlink feed"
+        // );
         defaultThreshold = defaultThreshold_;
         targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
-        prevReferencePrice = refPerTok();
+        //prevReferencePrice = refPerTok();
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {ref/tok}; target == ref
-        return
-            targetUnitChainlinkFeed
-            .price(oracleTimeout).mul(refPerTok()); // {USD/ETH} // {ETH/rETH}
+        return targetUnitChainlinkFeed.price(oracleTimeout).mul(refPerTok()); // {USD/ETH} * {ETH/rETH}
     }
 
     /// Refresh exchange rates and update default status.

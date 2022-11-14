@@ -137,7 +137,6 @@ describe('Maple Collateral mainnet fork tests', () => {
       console.log('prevPrincipalOut', prevPrincipalOut)
       console.log('interestSum', interestSum)
       console.log('prevPoolLoss', prevPoolLoss)
-      console.log('latestBlock', await ethers.provider.getBlock("latest"))
     })
    
   })

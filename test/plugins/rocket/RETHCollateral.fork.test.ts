@@ -21,13 +21,13 @@ import { forkToMainnet, encodeSlot } from '../../integration/fork-helpers'
 // Maple Pool Mainnet Addresses
 const RETH = '0xae78736Cd615f374D3085123A210448E74Fc6393' // RETH
 const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' // WETH
-const ETH_CHAINLINK_FEED = '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419' // ETH-USD chainlink feed
+const ETH_CHAINLINK_FEED = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419' // ETH-USD chainlink feed
 
 const FORK_BLOCK = 15919210
 // expected CONSTANTS at block 15919210
-const REF_PER_TOK = BigNumber.from('1013213518328275053')
-const STRICT_PRICE = BigNumber.from('1013295396112691161')
-const TARGET_PER_REF = BigNumber.from('1000080810000000000')
+// const REF_PER_TOK = BigNumber.from('1013213518328275053')
+// const STRICT_PRICE = BigNumber.from('1013295396112691161')
+// const TARGET_PER_REF = BigNumber.from('1000080810000000000')
 
 // from fixtures File
 const rTokenMaxTradeVolume = fp('1e6') // $1M
@@ -42,7 +42,7 @@ const delayUntilDefault = bn('86400') // 24h
 
 // const getExchangeRateSlot = ''
 
-describe('Maple Collateral mainnet fork tests', () => {
+describe('RETH Collateral mainnet fork tests', () => {
   let owner: SignerWithAddress
 
   // Tokens
@@ -70,6 +70,7 @@ describe('Maple Collateral mainnet fork tests', () => {
     RETHCollateralFactory = await ethers.getContractFactory('RETHCollateral')
 
     // deploy collateral contract
+    // ERROR ON DEPLOYMENT
     rethCollateral = <RETHCollateral>(
       await RETHCollateralFactory.deploy(
         fp('1'),
@@ -79,11 +80,26 @@ describe('Maple Collateral mainnet fork tests', () => {
         rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
-        delayUntilDefault,
-        refPerTokThreshold,
-        defaultThreshold
+        defaultThreshold,
+        delayUntilDefault
       )
     )
+  })
+
+  describe('constants', () => {
+    let getExchangeRate: BigNumber
+
+    beforeEach(async () => {
+      getExchangeRate = await reth.getExchangeRate()
+
+      // assert pool is sound and refPerTok is above 1 before testing
+      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+    })
+
+    it('Do the console logs here', async () => {
+      console.log('getExchangeRate', getExchangeRate)
+    })
   })
 
   // describe('#constructor', () => {
@@ -105,19 +121,19 @@ describe('Maple Collateral mainnet fork tests', () => {
   //   })
   // })
 
-  describe('Prices', () => {
-    it('strictPrice calculation correct', async () => {
-      expect(await rethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
-    })
+  // describe('Prices', () => {
+  //   it('strictPrice calculation correct', async () => {
+  //     expect(await rethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
+  //   })
 
-    it('targetPerRef calculation correct', async () => {
-      expect(await rethCollateral.targetPerRef()).to.be.equal(TARGET_PER_REF)
-    })
+  //   it('targetPerRef calculation correct', async () => {
+  //     expect(await rethCollateral.targetPerRef()).to.be.equal(TARGET_PER_REF)
+  //   })
 
-    it('refPerTok calculation correct', async () => {
-      expect(await rethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
-    })
-  })
+  //   it('refPerTok calculation correct', async () => {
+  //     expect(await rethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
+  //   })
+  // })
 
   // describe('#refresh', () => {
   //   let prevPrincipalOut: BigNumber
