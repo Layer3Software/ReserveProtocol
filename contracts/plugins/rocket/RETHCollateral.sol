@@ -55,14 +55,14 @@ contract RETHCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        // require(defaultThreshold_ > 0, "defaultThreshold zero");
-        // require(
-        //     address(targetUnitUSDChainlinkFeed_) != address(0),
-        //     "missing target unit chainlink feed"
-        // );
+        require(defaultThreshold_ > 0, "defaultThreshold zero");
+        require(
+            address(targetUnitUSDChainlinkFeed_) != address(0),
+            "missing target unit chainlink feed"
+        );
         defaultThreshold = defaultThreshold_;
         targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
-        //prevReferencePrice = refPerTok();
+        prevReferencePrice = refPerTok();
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
