@@ -48,6 +48,8 @@ describe('RETH Collateral mainnet fork tests', () => {
   let reth: IRETH
   let weth: ERC20
   let feed: AggregatorV3Interface
+  let oracleLib: OracleLib
+
 
   // Factories
   let RETHCollateralFactory: ContractFactory
@@ -65,7 +67,7 @@ describe('RETH Collateral mainnet fork tests', () => {
 
     // Deploy OracleLib external library
     const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
-    const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
+    oracleLib = <OracleLib>await OracleLibFactory.deploy()
 
     // Factories
     RETHCollateralFactory = await ethers.getContractFactory('RETHCollateral')
@@ -94,7 +96,8 @@ describe('RETH Collateral mainnet fork tests', () => {
 
     beforeEach(async () => {
       getExchangeRate = await reth.getExchangeRate()
-      price = (await feed.latestRoundData())[1]
+      // price = (await feed.latestRoundData())[1]
+      price = await oracleLib.price_(feed.address, ORACLE_TIMEOUT)
       refPerToken = await rethCollateral.refPerTok()
 
       // assert pool is sound and refPerTok is above 1 before testing
@@ -130,68 +133,68 @@ describe('RETH Collateral mainnet fork tests', () => {
 
   describe('Prices', () => {
     // ERROR: Units or block number likely off
-    // it('strictPrice calculation correct', async () => {
-    //   expect(await rethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
-    // })
+    it('strictPrice calculation correct', async () => {
+      expect(await rethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
+    })
 
     it('targetPerRef calculation correct', async () => {
       expect(await rethCollateral.targetPerRef()).to.be.equal(TARGET_PER_REF)
     })
 
-    // it('refPerTok calculation correct', async () => {
-    //   expect(await rethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
-    // })
+    it('refPerTok calculation correct', async () => {
+      expect(await rethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
+    })
   })
 
-  describe('#refresh', () => {
+  // describe('#refresh', () => {
 
-    let rethCollateral1: RETHCollateral
-    let rethMock: RETHMock
-    let getExchangeRate: BigNumber
+  //   let rethCollateral1: RETHCollateral
+  //   let rethMock: RETHMock
+  //   let getExchangeRate: BigNumber
 
-    beforeEach(async () => {
+  //   beforeEach(async () => {
 
-      // Deploy RETH Mock 
-      const RETHMockFactory: ContractFactory = await ethers.getContractFactory('RETHMock')
+  //     // Deploy RETH Mock 
+  //     const RETHMockFactory: ContractFactory = await ethers.getContractFactory('RETHMock')
 
-      rethMock = <RETHMock>(await RETHMockFactory.deploy(WETH))
+  //     rethMock = <RETHMock>(await RETHMockFactory.deploy(WETH))
 
-      rethCollateral1 = <RETHCollateral>(
-        await RETHCollateralFactory.deploy(
-          fp('1'),
-          ETH_CHAINLINK_FEED,
-          rethMock.address,
-          ZERO_ADDRESS,
-          rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault
-        )
-      )
+  //     rethCollateral1 = <RETHCollateral>(
+  //       await RETHCollateralFactory.deploy(
+  //         fp('1'),
+  //         ETH_CHAINLINK_FEED,
+  //         rethMock.address,
+  //         ZERO_ADDRESS,
+  //         rTokenMaxTradeVolume,
+  //         ORACLE_TIMEOUT,
+  //         ethers.utils.formatBytes32String('USD'),
+  //         defaultThreshold,
+  //         delayUntilDefault
+  //       )
+  //     )
 
-      getExchangeRate = await rethMock.getExchangeRate()
+  //     getExchangeRate = await rethMock.getExchangeRate()
 
-      // assert pool is sound and refPerTok is above 1 before testing
-      // expect(await rethCollateral1.status()).to.be.equal(CollateralStatus.SOUND)
-      // expect(await rethCollateral1.refPerTok()).to.be.equal(fp('1'))
-    })
+  //     // assert pool is sound and refPerTok is above 1 before testing
+  //     // expect(await rethCollateral1.status()).to.be.equal(CollateralStatus.SOUND)
+  //     // expect(await rethCollateral1.refPerTok()).to.be.equal(fp('1'))
+  //   })
 
-    it('status DISABLE if refPerTok is below prevRefPerTok', async () => {
+  //   it('status DISABLE if refPerTok is below prevRefPerTok', async () => {
 
-      // await rethCollateral1.refresh()
+  //     // await rethCollateral1.refresh()
 
-      // await rethMock.setExchangeRate(1000000000000000000)
+  //     // await rethMock.setExchangeRate(1000000000000000000)
 
-      // refPerTok must be below ratio of 1
-      const refPerTok = await rethCollateral1.refPerTok()
-      console.log('refPerTok', refPerTok)
-      // expect(refPerTok).to.be.above(fp('1'))
+  //     // refPerTok must be below ratio of 1
+  //     const refPerTok = await rethCollateral1.refPerTok()
+  //     console.log('refPerTok', refPerTok)
+  //     // expect(refPerTok).to.be.above(fp('1'))
 
-      // await rethCollateral1.refresh()
+  //     // await rethCollateral1.refresh()
 
-      // expect(await rethCollateral1.status()).to.be.eq(CollateralStatus.DISABLED)
-    })
+  //     // expect(await rethCollateral1.status()).to.be.eq(CollateralStatus.DISABLED)
+  //   })
 
     // it('status DISABLED if pool losses are greater than the pool profits', async () => {
     //   /**

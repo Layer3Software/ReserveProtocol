@@ -98,11 +98,12 @@ contract RETHCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rate = IRETH(address(erc20)).getExchangeRate();
-        return toFix(rate);
+        return shiftl_toFix(rate, -18);
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
         return targetUnitChainlinkFeed.price(oracleTimeout);
     }
+
 }
