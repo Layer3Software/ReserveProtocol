@@ -48,8 +48,6 @@ describe('RETH Collateral mainnet fork tests', () => {
   let reth: IRETH
   let weth: ERC20
   let feed: AggregatorV3Interface
-  let oracleLib: OracleLib
-
 
   // Factories
   let RETHCollateralFactory: ContractFactory
@@ -67,7 +65,7 @@ describe('RETH Collateral mainnet fork tests', () => {
 
     // Deploy OracleLib external library
     const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
-    oracleLib = <OracleLib>await OracleLibFactory.deploy()
+    const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
 
     // Factories
     RETHCollateralFactory = await ethers.getContractFactory('RETHCollateral')
@@ -96,8 +94,7 @@ describe('RETH Collateral mainnet fork tests', () => {
 
     beforeEach(async () => {
       getExchangeRate = await reth.getExchangeRate()
-      // price = (await feed.latestRoundData())[1]
-      price = await oracleLib.price_(feed.address, ORACLE_TIMEOUT)
+      price = (await feed.latestRoundData())[1]
       refPerToken = await rethCollateral.refPerTok()
 
       // assert pool is sound and refPerTok is above 1 before testing
