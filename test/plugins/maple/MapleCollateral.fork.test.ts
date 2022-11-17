@@ -123,11 +123,19 @@ describe('Maple Collateral mainnet fork tests', () => {
     let prevPrincipalOut: BigNumber
     let interestSum: BigNumber
     let prevPoolLoss: BigNumber
+    let strictPrice: BigNumber
+    let refPerToken: BigNumber
+    let targetPerRef: BigNumber
+
 
     beforeEach(async () => {
       prevPrincipalOut = await pool.principalOut()
       interestSum = await pool.interestSum()
       prevPoolLoss = await pool.poolLosses()
+
+      strictPrice = await mapleCollateral.strictPrice()
+      refPerToken = await mapleCollateral.refPerTok()
+      targetPerRef = await mapleCollateral.targetPerRef()
       // assert pool is sound and refPerTok is above 1 before testing
       expect(await mapleCollateral.status()).to.be.equal(CollateralStatus.SOUND)
       expect(await mapleCollateral.refPerTok()).to.be.above(fp('1'))
@@ -137,6 +145,9 @@ describe('Maple Collateral mainnet fork tests', () => {
       console.log('prevPrincipalOut', prevPrincipalOut)
       console.log('interestSum', interestSum)
       console.log('prevPoolLoss', prevPoolLoss)
+      console.log('strictPrice', strictPrice)
+      console.log('refPerToken', refPerToken)
+      console.log('targetPerRef', targetPerRef)
     })
    
   })

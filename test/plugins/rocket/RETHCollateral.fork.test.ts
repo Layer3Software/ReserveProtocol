@@ -13,7 +13,11 @@ import {
   ERC20__factory,
   RETHCollateral,
   OracleLib,
+  OracleLib__factory,
+  AggregatorV3Interface,
   MockV3Aggregator,
+  AggregatorV3Interface__factory,
+  RETHMock,
 } from '../../../typechain'
 
 import { forkToMainnet, encodeSlot } from '../../integration/fork-helpers'
@@ -25,9 +29,9 @@ const ETH_CHAINLINK_FEED = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419' // ETH-U
 
 const FORK_BLOCK = 15919210
 // expected CONSTANTS at block 15919210
-// const REF_PER_TOK = BigNumber.from('1013213518328275053')
-// const STRICT_PRICE = BigNumber.from('1013295396112691161')
-// const TARGET_PER_REF = BigNumber.from('1000080810000000000')
+const REF_PER_TOK = BigNumber.from('1045037188849020959') 
+const STRICT_PRICE = BigNumber.from('1661933091798490000000')
+const TARGET_PER_REF = BigNumber.from('1000000000000000000')
 
 // from fixtures File
 const rTokenMaxTradeVolume = fp('1e6') // $1M
@@ -35,19 +39,15 @@ const defaultThreshold = fp('0.05') // 5%
 const refPerTokThreshold = fp('1.01')
 const delayUntilDefault = bn('86400') // 24h
 
-// slot addresses for changing storage varialbes in maple pool contract
-// const principalOutSlot = '0x11'
-// const interestSumSlot = '0xc'
-// const poolLossesSlot = '0xd'
-
-// const getExchangeRateSlot = ''
+// deploy mock and update getExchangeRate
 
 describe('RETH Collateral mainnet fork tests', () => {
   let owner: SignerWithAddress
 
   // Tokens
   let reth: IRETH
-  let weth: ERC20 
+  let weth: ERC20
+  let feed: AggregatorV3Interface
 
   // Factories
   let RETHCollateralFactory: ContractFactory
@@ -61,6 +61,7 @@ describe('RETH Collateral mainnet fork tests', () => {
 
     reth = IRETH__factory.connect(RETH, owner)
     weth = ERC20__factory.connect(WETH, owner)
+    feed = AggregatorV3Interface__factory.connect(ETH_CHAINLINK_FEED, owner)
 
     // Deploy OracleLib external library
     const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
@@ -88,9 +89,13 @@ describe('RETH Collateral mainnet fork tests', () => {
 
   describe('constants', () => {
     let getExchangeRate: BigNumber
+    let price: BigNumber
+    let refPerToken: BigNumber
 
     beforeEach(async () => {
       getExchangeRate = await reth.getExchangeRate()
+      price = (await feed.latestRoundData())[1]
+      refPerToken = await rethCollateral.refPerTok()
 
       // assert pool is sound and refPerTok is above 1 before testing
       expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
@@ -99,76 +104,115 @@ describe('RETH Collateral mainnet fork tests', () => {
 
     it('Do the console logs here', async () => {
       console.log('getExchangeRate', getExchangeRate)
+      console.log('refPerToken', refPerToken)
+      console.log('price', price)
+      
     })
   })
 
-  // describe('#constructor', () => {
-  //   it('reverts if refPerTokThreshold is less than 1e18', async () => {
-  //     await expect(
-  //       RETHCollateralFactory.deploy(
-  //         fp('1'),
-  //         ETH_CHAINLINK_FEED,
-  //         reth.address,
-  //         ZERO_ADDRESS,
-  //         rTokenMaxTradeVolume,
-  //         ORACLE_TIMEOUT,
-  //         ethers.utils.formatBytes32String('USD'),
-  //         delayUntilDefault,
-  //         bn('9e17'),
-  //         defaultThreshold
-  //       )
-  //     ).to.be.revertedWith('refPerTokThreshold minimum 1e18')
-  //   })
-  // })
+  describe('#constructor', () => {
+    it('reverts if refPerTokThreshold is less than 1e18', async () => {
+      await expect(
+        RETHCollateralFactory.deploy(
+          fp('1'),
+          ETH_CHAINLINK_FEED,
+          reth.address,
+          ZERO_ADDRESS,
+          rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          bn('0'),
+          delayUntilDefault
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
+    })
+  })
 
-  // describe('Prices', () => {
-  //   it('strictPrice calculation correct', async () => {
-  //     expect(await rethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
-  //   })
+  describe('Prices', () => {
+    // ERROR: Units or block number likely off
+    // it('strictPrice calculation correct', async () => {
+    //   expect(await rethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
+    // })
 
-  //   it('targetPerRef calculation correct', async () => {
-  //     expect(await rethCollateral.targetPerRef()).to.be.equal(TARGET_PER_REF)
-  //   })
+    it('targetPerRef calculation correct', async () => {
+      expect(await rethCollateral.targetPerRef()).to.be.equal(TARGET_PER_REF)
+    })
 
-  //   it('refPerTok calculation correct', async () => {
-  //     expect(await rethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
-  //   })
-  // })
+    // it('refPerTok calculation correct', async () => {
+    //   expect(await rethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
+    // })
+  })
 
-  // describe('#refresh', () => {
-  //   let prevPrincipalOut: BigNumber
-  //   let interestSum: BigNumber
-  //   let prevPoolLoss: BigNumber
+  describe('#refresh', () => {
 
-  //   beforeEach(async () => {
-  //     prevPrincipalOut = await pool.principalOut()
-  //     interestSum = await pool.interestSum()
-  //     prevPoolLoss = await pool.poolLosses()
-  //     // assert pool is sound and refPerTok is above 1 before testing
-  //     expect(await mapleCollateral.status()).to.be.equal(CollateralStatus.SOUND)
-  //     expect(await mapleCollateral.refPerTok()).to.be.above(fp('1'))
-  //   })
+    let rethCollateral1: RETHCollateral
+    let rethMock: RETHMock
+    let getExchangeRate: BigNumber
 
-  //   it('status DISABLED if pool losses are greater than the pool profits', async () => {
-  //     /**
-  //      * the refPerTok ratio will be less than 1.0 if the pool concurs a loss
-  //      * greater than the profits it has earned till now
-  //      * in such a case we want the collateral status to be disabled
-  //      */
-  //     // simulate maple pool loss
-  //     const simulatedLoss = interestSum.add('1')
-  //     expect(prevPrincipalOut).to.be.above(simulatedLoss)
+    beforeEach(async () => {
 
-  //     await updateSlot(poolLossesSlot, prevPoolLoss.add(simulatedLoss))
-  //     await updateSlot(principalOutSlot, prevPrincipalOut.sub(simulatedLoss))
+      // Deploy RETH Mock 
+      const RETHMockFactory: ContractFactory = await ethers.getContractFactory('RETHMock')
 
-  //     // refPerTok must be below ratio of 1
-  //     expect(await mapleCollateral.refPerTok()).to.be.below(fp('1'))
+      rethMock = <RETHMock>(await RETHMockFactory.deploy(WETH))
 
-  //     await mapleCollateral.refresh()
+      rethCollateral1 = <RETHCollateral>(
+        await RETHCollateralFactory.deploy(
+          fp('1'),
+          ETH_CHAINLINK_FEED,
+          rethMock.address,
+          ZERO_ADDRESS,
+          rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      )
 
-  //     expect(await mapleCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
-  //   })
+      getExchangeRate = await rethMock.getExchangeRate()
+
+      // assert pool is sound and refPerTok is above 1 before testing
+      // expect(await rethCollateral1.status()).to.be.equal(CollateralStatus.SOUND)
+      // expect(await rethCollateral1.refPerTok()).to.be.equal(fp('1'))
+    })
+
+    it('status DISABLE if refPerTok is below prevRefPerTok', async () => {
+
+      // await rethCollateral1.refresh()
+
+      // await rethMock.setExchangeRate(1000000000000000000)
+
+      // refPerTok must be below ratio of 1
+      const refPerTok = await rethCollateral1.refPerTok()
+      console.log('refPerTok', refPerTok)
+      // expect(refPerTok).to.be.above(fp('1'))
+
+      // await rethCollateral1.refresh()
+
+      // expect(await rethCollateral1.status()).to.be.eq(CollateralStatus.DISABLED)
+    })
+
+    // it('status DISABLED if pool losses are greater than the pool profits', async () => {
+    //   /**
+    //    * the refPerTok ratio will be less than 1.0 if the pool concurs a loss
+    //    * greater than the profits it has earned till now
+    //    * in such a case we want the collateral status to be disabled
+    //    */
+    //   // simulate maple pool loss
+    //   const simulatedLoss = interestSum.add('1')
+    //   expect(prevPrincipalOut).to.be.above(simulatedLoss)
+
+    //   await updateSlot(poolLossesSlot, prevPoolLoss.add(simulatedLoss))
+    //   await updateSlot(principalOutSlot, prevPrincipalOut.sub(simulatedLoss))
+
+    //   // refPerTok must be below ratio of 1
+    //   expect(await mapleCollateral.refPerTok()).to.be.below(fp('1'))
+
+    //   await mapleCollateral.refresh()
+
+    //   expect(await mapleCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+    // })
 
   //   it('status IFFY if refPerTok is below refPerTok threshold', async () => {
   //     // refPerTok Threshold is the minimum refPerTok (above 1e18) below which
@@ -266,7 +310,7 @@ describe('RETH Collateral mainnet fork tests', () => {
   //       .to.emit(mapleCollateral, 'DefaultStatusChanged')
   //       .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
   //   })
-  // })
+  })
 
   const updateSlot = async (slot: string, val: BigNumber | number) => {
     await ethers.provider.send('hardhat_setStorageAt', [
