@@ -30,7 +30,7 @@ const ETH_CHAINLINK_FEED = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419' // ETH-U
 const FORK_BLOCK = 15919210
 // expected CONSTANTS at block 15919210
 const REF_PER_TOK = BigNumber.from('1045037188849020959') 
-const STRICT_PRICE = BigNumber.from('1661933091798490000000')
+const STRICT_PRICE = BigNumber.from('1661933091798486521307')
 const TARGET_PER_REF = BigNumber.from('1000000000000000000')
 
 // from fixtures File
@@ -142,6 +142,10 @@ describe('RETH Collateral mainnet fork tests', () => {
   })
 
   describe('RETHMock testing', () => {
+    let getExchangeRate: BigNumber
+    let refPerToken: BigNumber
+    let price: BigNumber
+    let strictPrice: BigNumber
 
     beforeEach(async () => {
       RETHMockFactory = await ethers.getContractFactory('RETHMock')
@@ -151,7 +155,7 @@ describe('RETH Collateral mainnet fork tests', () => {
       expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
-    it('status IFFY if usdc(ref) peg falls below or above threshold', async () => {
+    it('status DISABLED if refPerTok < prevRefPerTok', async () => {
 
       rethCollateral = <RETHCollateral>(
         await RETHCollateralFactory.deploy(
@@ -167,10 +171,41 @@ describe('RETH Collateral mainnet fork tests', () => {
         )
       )
 
-      console.log('getExchangeRate', await rethMock.getExchangeRate())
-      console.log('refPerToken', await rethCollateral.refPerTok())
-      console.log('price', (await feed.latestRoundData())[1])
-    })      
+      getExchangeRate = await rethMock.getExchangeRate()
+      refPerToken = await rethCollateral.refPerTok()
+      price = (await feed.latestRoundData())[1]
+      strictPrice = await rethCollateral.strictPrice()
+
+      console.log('getExchangeRate', getExchangeRate)
+      console.log('refPerToken', refPerToken)
+      console.log('price', price)
+      console.log('strictPrice', strictPrice)
+
+      await rethMock.setExchangeRate('2000000000000000000')
+      
+      getExchangeRate = await rethMock.getExchangeRate()
+      refPerToken = await rethCollateral.refPerTok()
+      price = (await feed.latestRoundData())[1]
+      strictPrice = await rethCollateral.strictPrice()
+
+      console.log('getExchangeRate', getExchangeRate)
+      console.log('refPerToken', refPerToken)
+      console.log('price', price)
+      console.log('strictPrice', strictPrice)
+
+      await rethCollateral.refresh()
+
+      getExchangeRate = await rethMock.getExchangeRate()
+      refPerToken = await rethCollateral.refPerTok()
+      price = (await feed.latestRoundData())[1]
+      strictPrice = await rethCollateral.strictPrice()
+
+      console.log('getExchangeRate', getExchangeRate)
+      console.log('refPerToken', refPerToken)
+      console.log('price', price)
+      console.log('strictPrice', strictPrice)
+    })   
+    
   })
 
 
