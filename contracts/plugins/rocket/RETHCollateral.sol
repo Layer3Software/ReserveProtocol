@@ -78,26 +78,34 @@ contract RETHCollateral is Collateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        // Check for hard default
         uint192 referencePrice = refPerTok();
-        // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
-            markStatus(CollateralStatus.DISABLED);
+            uint192 actualReferencePrice = actualRefPerTok();
+            if (actualReferencePrice < prevReferencePrice) {
+                markStatus(CollateralStatus.DISABLED);
+            } else {
+                markStatus(CollateralStatus.SOUND);
+            }
         } else {
+            prevReferencePrice = referencePrice;
             markStatus(CollateralStatus.SOUND);
         }
-        prevReferencePrice = referencePrice;
-
+        
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
 
-        // No interactions beyond the initial refresher
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
+        uint256 rate = IRETH(address(erc20)).getExchangeRate() * 99 / 100;
+        return shiftl_toFix(rate, -18);
+    }
+
+        /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    function actualRefPerTok() public view returns (uint192) {
         uint256 rate = IRETH(address(erc20)).getExchangeRate();
         return shiftl_toFix(rate, -18);
     }

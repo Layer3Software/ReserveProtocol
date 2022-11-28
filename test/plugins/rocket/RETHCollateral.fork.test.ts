@@ -29,8 +29,8 @@ const ETH_CHAINLINK_FEED = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419' // ETH-U
 
 const FORK_BLOCK = 15919210
 // expected CONSTANTS at block 15919210
-const REF_PER_TOK = BigNumber.from('1045037188849020959') 
-const STRICT_PRICE = BigNumber.from('1661933091798486521307')
+const REF_PER_TOK = BigNumber.from('1034586816960530749') 
+const STRICT_PRICE = BigNumber.from('1645313760880501655442')
 const TARGET_PER_REF = BigNumber.from('1000000000000000000')
 
 // from fixtures File
@@ -142,10 +142,9 @@ describe('RETH Collateral mainnet fork tests', () => {
   })
 
   describe('RETHMock testing', () => {
-    let getExchangeRate: BigNumber
+    let prevRefPerToken: BigNumber
     let refPerToken: BigNumber
-    let price: BigNumber
-    let strictPrice: BigNumber
+
 
     beforeEach(async () => {
       RETHMockFactory = await ethers.getContractFactory('RETHMock')
@@ -171,39 +170,79 @@ describe('RETH Collateral mainnet fork tests', () => {
         )
       )
 
-      getExchangeRate = await rethMock.getExchangeRate()
       refPerToken = await rethCollateral.refPerTok()
-      price = (await feed.latestRoundData())[1]
-      strictPrice = await rethCollateral.strictPrice()
-
-      console.log('getExchangeRate', getExchangeRate)
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
       console.log('refPerToken', refPerToken)
-      console.log('price', price)
-      console.log('strictPrice', strictPrice)
+      console.log('prevRefPerToken', prevRefPerToken)
+
 
       await rethMock.setExchangeRate('2000000000000000000')
       
-      getExchangeRate = await rethMock.getExchangeRate()
-      refPerToken = await rethCollateral.refPerTok()
-      price = (await feed.latestRoundData())[1]
-      strictPrice = await rethCollateral.strictPrice()
-
-      console.log('getExchangeRate', getExchangeRate)
-      console.log('refPerToken', refPerToken)
-      console.log('price', price)
-      console.log('strictPrice', strictPrice)
-
       await rethCollateral.refresh()
 
-      getExchangeRate = await rethMock.getExchangeRate()
       refPerToken = await rethCollateral.refPerTok()
-      price = (await feed.latestRoundData())[1]
-      strictPrice = await rethCollateral.strictPrice()
-
-      console.log('getExchangeRate', getExchangeRate)
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
       console.log('refPerToken', refPerToken)
-      console.log('price', price)
-      console.log('strictPrice', strictPrice)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+
+      await rethMock.setExchangeRate('1998000000000000000')
+      
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('refPerToken', refPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+
+      await rethMock.setExchangeRate('1999000000000000000')
+      
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('refPerToken', refPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+
+      await rethMock.setExchangeRate('2100000000000000000')
+      
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('refPerToken', refPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+
+      await rethMock.setExchangeRate('1800000000000000000')
+      
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('refPerToken', refPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+
+      // collateral should remain disabled even though refPerTok > prevRefPerTok
+      await rethMock.setExchangeRate('2100000000000000000')
+      
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('refPerToken', refPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+
     })   
     
   })
