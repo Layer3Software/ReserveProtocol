@@ -141,7 +141,7 @@ describe('RETH Collateral mainnet fork tests', () => {
     })
   })
 
-  describe('RETHMock testing', () => {
+  describe('RETHMock testing: case #0', () => {
     let prevRefPerToken: BigNumber
     let refPerToken: BigNumber
 
@@ -154,7 +154,7 @@ describe('RETH Collateral mainnet fork tests', () => {
       expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
-    it('status DISABLED if refPerTok < prevRefPerTok', async () => {
+    it('status SOUND if refPerTok >= prevRefPerTok', async () => {
 
       rethCollateral = <RETHCollateral>(
         await RETHCollateralFactory.deploy(
@@ -172,80 +172,312 @@ describe('RETH Collateral mainnet fork tests', () => {
 
       refPerToken = await rethCollateral.refPerTok()
       prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T0 - start')
       console.log('refPerToken', refPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
+      await rethMock.setExchangeRate('1000000000000000000')
+      await rethCollateral.refresh()
 
+      refPerToken = await rethCollateral.refPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - exchange rate stays the same')
+      console.log('refPerToken', refPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+
+      await rethMock.setExchangeRate('1100000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T2 - exchange rate goes up')
+      console.log('refPerToken', refPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      
+    })   
+    
+  })
+
+  describe('RETHMock testing: case #1', () => {
+    let prevRefPerToken: BigNumber
+    let refPerToken: BigNumber
+    let actRefPerToken: BigNumber
+
+    beforeEach(async () => {
+      RETHMockFactory = await ethers.getContractFactory('RETHMock')
+      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+
+      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+    })
+
+    it('status SOUND if refPerTok < prevRefPerTok && actualRefPerTok >= prevRefPerTok', async () => {
+
+      rethCollateral = <RETHCollateral>(
+        await RETHCollateralFactory.deploy(
+          fp('1'),
+          ETH_CHAINLINK_FEED,
+          rethMock.address,
+          ZERO_ADDRESS,
+          rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      )
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T0 - start')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      await rethMock.setExchangeRate('999000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - exchange rate goes down 0.1%')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+
+      await rethMock.setExchangeRate('990000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - exchange rate goes down 1%')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      
+    })   
+    
+  })
+
+  describe('RETHMock testing: case #2', () => {
+    let prevRefPerToken: BigNumber
+    let refPerToken: BigNumber
+    let actRefPerToken: BigNumber
+
+    beforeEach(async () => {
+      RETHMockFactory = await ethers.getContractFactory('RETHMock')
+      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+
+      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+    })
+
+    it('status DISABLED if refPerTok < prevRefPerTok && actualRefPerTok < prevRefPerTok', async () => {
+
+      rethCollateral = <RETHCollateral>(
+        await RETHCollateralFactory.deploy(
+          fp('1'),
+          ETH_CHAINLINK_FEED,
+          rethMock.address,
+          ZERO_ADDRESS,
+          rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      )
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T0 - start')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      await rethMock.setExchangeRate('890000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - exchange rate goes down more than 1%')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+
+    })
+  })
+
+  describe('RETHMock testing: case #3', () => {
+    let prevRefPerToken: BigNumber
+    let refPerToken: BigNumber
+    let actRefPerToken: BigNumber
+
+    beforeEach(async () => {
+      RETHMockFactory = await ethers.getContractFactory('RETHMock')
+      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+
+      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+    })
+
+    it('status stays DISABLED if DISABLED before', async () => {
+
+      rethCollateral = <RETHCollateral>(
+        await RETHCollateralFactory.deploy(
+          fp('1'),
+          ETH_CHAINLINK_FEED,
+          rethMock.address,
+          ZERO_ADDRESS,
+          rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      )
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T0 - start')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      await rethMock.setExchangeRate('890000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - more than 1%')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+
+      await rethMock.setExchangeRate('1000000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - back above prevReferencePrice')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+
+    })
+  })
+
+  describe('RETHMock testing: case #4', () => {
+    let prevRefPerToken: BigNumber
+    let refPerToken: BigNumber
+    let actRefPerToken: BigNumber
+
+    beforeEach(async () => {
+      RETHMockFactory = await ethers.getContractFactory('RETHMock')
+      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+
+      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+    })
+
+    it('status becomes DISABLED after referencePrice has gone up overtime but drops 1% from there', async () => {
+
+      rethCollateral = <RETHCollateral>(
+        await RETHCollateralFactory.deploy(
+          fp('1'),
+          ETH_CHAINLINK_FEED,
+          rethMock.address,
+          ZERO_ADDRESS,
+          rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      )
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T0 - start')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      await rethMock.setExchangeRate('1100000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - referencePrice goes up')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+
+      await rethMock.setExchangeRate('1200000000000000000')
+      await rethCollateral.refresh()
+
+      refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
+      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - referencePrice goes up')
+      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
+      console.log('prevRefPerToken', prevRefPerToken)
+
+      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      
       await rethMock.setExchangeRate('2000000000000000000')
-      
       await rethCollateral.refresh()
 
       refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
       prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - referencePrice goes up')
       console.log('refPerToken', refPerToken)
-      console.log('prevRefPerToken', prevRefPerToken)
-
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
-
-      await rethMock.setExchangeRate('1998000000000000000')
-      
-      await rethCollateral.refresh()
-
-      refPerToken = await rethCollateral.refPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
-      console.log('refPerToken', refPerToken)
-      console.log('prevRefPerToken', prevRefPerToken)
-
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
-
-      await rethMock.setExchangeRate('1999000000000000000')
-      
-      await rethCollateral.refresh()
-
-      refPerToken = await rethCollateral.refPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
-      console.log('refPerToken', refPerToken)
-      console.log('prevRefPerToken', prevRefPerToken)
-
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
-
-      await rethMock.setExchangeRate('2100000000000000000')
-      
-      await rethCollateral.refresh()
-
-      refPerToken = await rethCollateral.refPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
-      console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
       expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
 
       await rethMock.setExchangeRate('1800000000000000000')
-      
       await rethCollateral.refresh()
 
       refPerToken = await rethCollateral.refPerTok()
+      actRefPerToken = await rethCollateral.actualRefPerTok()
       prevRefPerToken = await rethCollateral.prevReferencePrice()
+      console.log('T1 - referencePrice down more than 1%')
       console.log('refPerToken', refPerToken)
+      console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
       expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
 
-      // collateral should remain disabled even though refPerTok > prevRefPerTok
-      await rethMock.setExchangeRate('2100000000000000000')
-      
-      await rethCollateral.refresh()
-
-      refPerToken = await rethCollateral.refPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
-      console.log('refPerToken', refPerToken)
-      console.log('prevRefPerToken', prevRefPerToken)
-
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
-
-    })   
-    
+    })
   })
-
 
 })

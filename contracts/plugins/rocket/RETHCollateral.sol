@@ -77,7 +77,6 @@ contract RETHCollateral is Collateral {
     function refresh() external virtual override {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
-
         uint192 referencePrice = refPerTok();
         if (referencePrice < prevReferencePrice) {
             uint192 actualReferencePrice = actualRefPerTok();
@@ -90,12 +89,10 @@ contract RETHCollateral is Collateral {
             prevReferencePrice = referencePrice;
             markStatus(CollateralStatus.SOUND);
         }
-        
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
-
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
@@ -104,7 +101,7 @@ contract RETHCollateral is Collateral {
         return shiftl_toFix(rate, -18);
     }
 
-        /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function actualRefPerTok() public view returns (uint192) {
         uint256 rate = IRETH(address(erc20)).getExchangeRate();
         return shiftl_toFix(rate, -18);

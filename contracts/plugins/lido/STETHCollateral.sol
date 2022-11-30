@@ -30,9 +30,6 @@ contract STETHCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    int8 public immutable referenceERC20Decimals;
-
-    /// @param refUnitChainlinkFeed_ Feed units: {target/ref}
     /// @param targetUnitUSDChainlinkFeed_ Feed units: {UoA/target}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -40,7 +37,6 @@ contract STETHCollateral is Collateral {
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
         uint192 fallbackPrice_,
-        AggregatorV3Interface refUnitChainlinkFeed_,
         AggregatorV3Interface targetUnitUSDChainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
@@ -48,12 +44,11 @@ contract STETHCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_
+        uint256 delayUntilDefault_
     )
         Collateral(
             fallbackPrice_,
-            refUnitChainlinkFeed_,
+            targetUnitUSDChainlinkFeed_,
             erc20_,
             rewardERC20_,
             maxTradeVolume_,
@@ -67,11 +62,8 @@ contract STETHCollateral is Collateral {
             address(targetUnitUSDChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
         );
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
-        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         defaultThreshold = defaultThreshold_;
         targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
-        referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
     }
 
@@ -87,33 +79,36 @@ contract STETHCollateral is Collateral {
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
-        // == Refresh ==
-
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
-
-        // Check for hard default
         uint192 referencePrice = refPerTok();
-        // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
-            markStatus(CollateralStatus.DISABLED);
+            uint192 actualReferencePrice = actualRefPerTok();
+            if (actualReferencePrice < prevReferencePrice) {
+                markStatus(CollateralStatus.DISABLED);
+            } else {
+                markStatus(CollateralStatus.SOUND);
+            }
         } else {
+            prevReferencePrice = referencePrice;
             markStatus(CollateralStatus.SOUND);
         }
-        prevReferencePrice = referencePrice;
-
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
-
-        // No interactions beyond the initial refresher
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        uint256 rate = ISTETH(address(erc20)).stEthPerToken();
+        uint256 rate = ISTETH(address(erc20)).stEthPerToken() * 99 / 100;
         return shiftl_toFix(rate, 18);
+    }
+
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    function actualRefPerTok() public view returns (uint192) {
+        uint256 rate = ISTETH(address(erc20)).stEthPerToken();
+        return shiftl_toFix(rate, -18);
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
