@@ -7,30 +7,30 @@ import { ORACLE_TIMEOUT } from '../../fixtures'
 
 import { bn, fp } from '../../../common/numbers'
 import {
-  IRETH,
-  IRETH__factory,
+  ICBETH,
+  ICBETH__factory,
   ERC20,
   ERC20__factory,
-  RETHCollateral,
+  CBETHCollateral,
   OracleLib,
   OracleLib__factory,
   AggregatorV3Interface,
   MockV3Aggregator,
   AggregatorV3Interface__factory,
-  RETHMock,
+  CBETHMock,
 } from '../../../typechain'
 
 import { forkToMainnet, encodeSlot } from '../../integration/fork-helpers'
 
 // Rocket Pool Mainnet Addresses
-const RETH = '0xae78736Cd615f374D3085123A210448E74Fc6393' // RETH
-const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' // WETH
+const CBETH = '0xBe9895146f7AF43049ca1c1AE358B0541Ea49704'
+const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 const ETH_CHAINLINK_FEED = '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419' // ETH-USD chainlink feed
 
 const FORK_BLOCK = 15919210
 // expected CONSTANTS at block 15919210
-const REF_PER_TOK = BigNumber.from('1034586816960530749') 
-const STRICT_PRICE = BigNumber.from('1645313760880501655442')
+const REF_PER_TOK = BigNumber.from('1003837480196486129') 
+const STRICT_PRICE = BigNumber.from('1596412783131273855810')
 const TARGET_PER_REF = BigNumber.from('1000000000000000000')
 
 // from fixtures File
@@ -41,40 +41,40 @@ const delayUntilDefault = bn('86400') // 24h
 
 // deploy mock and update getExchangeRate
 
-describe('RETH Collateral mainnet fork tests', () => {
+describe('CBETH Collateral mainnet fork tests', () => {
   let owner: SignerWithAddress
 
   // Tokens
-  let reth: IRETH
+  let cbeth: ICBETH
   let weth: ERC20
   let feed: AggregatorV3Interface
-  let rethMock: RETHMock
+  let cbethMock: CBETHMock
 
   // Factories
-  let RETHCollateralFactory: ContractFactory
-  let RETHMockFactory: ContractFactory
+  let CBETHCollateralFactory: ContractFactory
+  let CBETHMockFactory: ContractFactory
 
   // Assets
-  let rethCollateral: RETHCollateral
+  let cbethCollateral: CBETHCollateral
 
   beforeEach(async () => {
     await forkToMainnet(FORK_BLOCK)
     ;[owner] = await ethers.getSigners()
 
-    reth = IRETH__factory.connect(RETH, owner)
+    cbeth = ICBETH__factory.connect(CBETH, owner)
     weth = ERC20__factory.connect(WETH, owner)
     feed = AggregatorV3Interface__factory.connect(ETH_CHAINLINK_FEED, owner)
 
     // Factories
-    RETHCollateralFactory = await ethers.getContractFactory('RETHCollateral')
+    CBETHCollateralFactory = await ethers.getContractFactory('CBETHCollateral')
 
     // deploy collateral contract
     // ERROR ON DEPLOYMENT
-    rethCollateral = <RETHCollateral>(
-      await RETHCollateralFactory.deploy(
+    cbethCollateral = <CBETHCollateral>(
+      await CBETHCollateralFactory.deploy(
         fp('1'),
         ETH_CHAINLINK_FEED,
-        reth.address,
+        cbeth.address,
         ZERO_ADDRESS,
         rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -91,13 +91,13 @@ describe('RETH Collateral mainnet fork tests', () => {
     let refPerToken: BigNumber
 
     beforeEach(async () => {
-      getExchangeRate = await reth.getExchangeRate()
+      getExchangeRate = await cbeth.exchangeRate()
       price = (await feed.latestRoundData())[1]
-      refPerToken = await rethCollateral.refPerTok()
+      refPerToken = await cbethCollateral.refPerTok()
 
       // assert pool is sound and refPerTok is above 1 before testing
-      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
-      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+      expect(await cbethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await cbethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
     it('Do the console logs here', async () => {
@@ -111,10 +111,10 @@ describe('RETH Collateral mainnet fork tests', () => {
   describe('#constructor', () => {
     it('reverts if refPerTokThreshold is less than 1e18', async () => {
       await expect(
-        RETHCollateralFactory.deploy(
+        CBETHCollateralFactory.deploy(
           fp('1'),
           ETH_CHAINLINK_FEED,
-          reth.address,
+          cbeth.address,
           ZERO_ADDRESS,
           rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -129,38 +129,38 @@ describe('RETH Collateral mainnet fork tests', () => {
   describe('Prices', () => {
     // ERROR: Units or block number likely off
     it('strictPrice calculation correct', async () => {
-      expect(await rethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
+      expect(await cbethCollateral.strictPrice()).to.be.equal(STRICT_PRICE)
     })
 
     it('targetPerRef calculation correct', async () => {
-      expect(await rethCollateral.targetPerRef()).to.be.equal(TARGET_PER_REF)
+      expect(await cbethCollateral.targetPerRef()).to.be.equal(TARGET_PER_REF)
     })
 
     it('refPerTok calculation correct', async () => {
-      expect(await rethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
+      expect(await cbethCollateral.refPerTok()).to.be.equal(REF_PER_TOK)
     })
   })
 
-  describe('RETHMock testing: case #0', () => {
+  describe('CBETHMock testing: case #0', () => {
     let prevRefPerToken: BigNumber
     let refPerToken: BigNumber
 
 
     beforeEach(async () => {
-      RETHMockFactory = await ethers.getContractFactory('RETHMock')
-      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+      CBETHMockFactory = await ethers.getContractFactory('CBETHMock')
+      cbethMock = <CBETHMock>(await CBETHMockFactory.deploy(weth.address))
 
-      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
-      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+      expect(await cbethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await cbethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
     it('status SOUND if refPerTok >= prevRefPerTok', async () => {
 
-      rethCollateral = <RETHCollateral>(
-        await RETHCollateralFactory.deploy(
+      cbethCollateral = <CBETHCollateral>(
+        await CBETHCollateralFactory.deploy(
           fp('1'),
           ETH_CHAINLINK_FEED,
-          rethMock.address,
+          cbethMock.address,
           ZERO_ADDRESS,
           rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -170,58 +170,58 @@ describe('RETH Collateral mainnet fork tests', () => {
         )
       )
 
-      refPerToken = await rethCollateral.refPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T0 - start')
       console.log('refPerToken', refPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      await rethMock.setExchangeRate('1000000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('1000000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - exchange rate stays the same')
       console.log('refPerToken', refPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
 
-      await rethMock.setExchangeRate('1100000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('1100000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T2 - exchange rate goes up')
       console.log('refPerToken', refPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
       
     })   
     
   })
 
-  describe('RETHMock testing: case #1', () => {
+  describe('CBETHMock testing: case #1', () => {
     let prevRefPerToken: BigNumber
     let refPerToken: BigNumber
     let actRefPerToken: BigNumber
 
     beforeEach(async () => {
-      RETHMockFactory = await ethers.getContractFactory('RETHMock')
-      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+      CBETHMockFactory = await ethers.getContractFactory('CBETHMock')
+      cbethMock = <CBETHMock>(await CBETHMockFactory.deploy(weth.address))
 
-      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
-      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+      expect(await cbethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await cbethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
     it('status SOUND if refPerTok < prevRefPerTok && actualRefPerTok >= prevRefPerTok', async () => {
 
-      rethCollateral = <RETHCollateral>(
-        await RETHCollateralFactory.deploy(
+      cbethCollateral = <CBETHCollateral>(
+        await CBETHCollateralFactory.deploy(
           fp('1'),
           ETH_CHAINLINK_FEED,
-          rethMock.address,
+          cbethMock.address,
           ZERO_ADDRESS,
           rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -231,64 +231,64 @@ describe('RETH Collateral mainnet fork tests', () => {
         )
       )
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T0 - start')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      await rethMock.setExchangeRate('999000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('999000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - exchange rate goes down 0.1%')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
 
-      await rethMock.setExchangeRate('990000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('990000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - exchange rate goes down 1%')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
       
     })   
     
   })
 
-  describe('RETHMock testing: case #2', () => {
+  describe('CBETHMock testing: case #2', () => {
     let prevRefPerToken: BigNumber
     let refPerToken: BigNumber
     let actRefPerToken: BigNumber
 
     beforeEach(async () => {
-      RETHMockFactory = await ethers.getContractFactory('RETHMock')
-      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+      CBETHMockFactory = await ethers.getContractFactory('CBETHMock')
+      cbethMock = <CBETHMock>(await CBETHMockFactory.deploy(weth.address))
 
-      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
-      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+      expect(await cbethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await cbethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
     it('status DISABLED if refPerTok < prevRefPerTok && actualRefPerTok < prevRefPerTok', async () => {
 
-      rethCollateral = <RETHCollateral>(
-        await RETHCollateralFactory.deploy(
+      cbethCollateral = <CBETHCollateral>(
+        await CBETHCollateralFactory.deploy(
           fp('1'),
           ETH_CHAINLINK_FEED,
-          rethMock.address,
+          cbethMock.address,
           ZERO_ADDRESS,
           rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -298,50 +298,50 @@ describe('RETH Collateral mainnet fork tests', () => {
         )
       )
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T0 - start')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      await rethMock.setExchangeRate('890000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('890000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - exchange rate goes down more than 1%')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
 
     })
   })
 
-  describe('RETHMock testing: case #3', () => {
+  describe('CBETHMock testing: case #3', () => {
     let prevRefPerToken: BigNumber
     let refPerToken: BigNumber
     let actRefPerToken: BigNumber
 
     beforeEach(async () => {
-      RETHMockFactory = await ethers.getContractFactory('RETHMock')
-      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+      CBETHMockFactory = await ethers.getContractFactory('CBETHMock')
+      cbethMock = <CBETHMock>(await CBETHMockFactory.deploy(weth.address))
 
-      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
-      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+      expect(await cbethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await cbethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
     it('status stays DISABLED if DISABLED before', async () => {
 
-      rethCollateral = <RETHCollateral>(
-        await RETHCollateralFactory.deploy(
+      cbethCollateral = <CBETHCollateral>(
+        await CBETHCollateralFactory.deploy(
           fp('1'),
           ETH_CHAINLINK_FEED,
-          rethMock.address,
+          cbethMock.address,
           ZERO_ADDRESS,
           rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -351,63 +351,63 @@ describe('RETH Collateral mainnet fork tests', () => {
         )
       )
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T0 - start')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      await rethMock.setExchangeRate('890000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('890000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - more than 1%')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
 
-      await rethMock.setExchangeRate('1000000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('1000000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - back above prevReferencePrice')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
 
     })
   })
 
-  describe('RETHMock testing: case #4', () => {
+  describe('CBETHMock testing: case #4', () => {
     let prevRefPerToken: BigNumber
     let refPerToken: BigNumber
     let actRefPerToken: BigNumber
 
     beforeEach(async () => {
-      RETHMockFactory = await ethers.getContractFactory('RETHMock')
-      rethMock = <RETHMock>(await RETHMockFactory.deploy(weth.address))
+      CBETHMockFactory = await ethers.getContractFactory('CBETHMock')
+      cbethMock = <CBETHMock>(await CBETHMockFactory.deploy(weth.address))
 
-      expect(await rethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
-      expect(await rethCollateral.refPerTok()).to.be.above(fp('1'))
+      expect(await cbethCollateral.status()).to.be.equal(CollateralStatus.SOUND)
+      expect(await cbethCollateral.refPerTok()).to.be.above(fp('1'))
     })
 
     it('status becomes DISABLED after referencePrice has gone up overtime but drops 1% from there', async () => {
 
-      rethCollateral = <RETHCollateral>(
-        await RETHCollateralFactory.deploy(
+      cbethCollateral = <CBETHCollateral>(
+        await CBETHCollateralFactory.deploy(
           fp('1'),
           ETH_CHAINLINK_FEED,
-          rethMock.address,
+          cbethMock.address,
           ZERO_ADDRESS,
           rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -417,65 +417,65 @@ describe('RETH Collateral mainnet fork tests', () => {
         )
       )
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T0 - start')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      await rethMock.setExchangeRate('1100000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('1100000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - referencePrice goes up')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
 
-      await rethMock.setExchangeRate('1200000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('1200000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - referencePrice goes up')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
       
-      await rethMock.setExchangeRate('2000000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('2000000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - referencePrice goes up')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.SOUND)
 
-      await rethMock.setExchangeRate('1800000000000000000')
-      await rethCollateral.refresh()
+      await cbethMock.setExchangeRate('1800000000000000000')
+      await cbethCollateral.refresh()
 
-      refPerToken = await rethCollateral.refPerTok()
-      actRefPerToken = await rethCollateral.actualRefPerTok()
-      prevRefPerToken = await rethCollateral.prevReferencePrice()
+      refPerToken = await cbethCollateral.refPerTok()
+      actRefPerToken = await cbethCollateral.actualRefPerTok()
+      prevRefPerToken = await cbethCollateral.prevReferencePrice()
       console.log('T1 - referencePrice down more than 1%')
       console.log('refPerToken', refPerToken)
       console.log('actRefPerToken', actRefPerToken)
       console.log('prevRefPerToken', prevRefPerToken)
 
-      expect(await rethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
+      expect(await cbethCollateral.status()).to.be.eq(CollateralStatus.DISABLED)
 
     })
   })

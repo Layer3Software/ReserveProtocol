@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/mocks/ERC20Mock.sol";
 
-contract STETHMock is ERC20Mock {
+contract CBETHMock is ERC20Mock {
     using FixLib for uint192;
     address internal _underlyingToken;
 
@@ -13,7 +13,7 @@ contract STETHMock is ERC20Mock {
 
     constructor(
         address underlyingToken
-    ) ERC20Mock('WSTETH', 'WSTETH') {
+    ) ERC20Mock('CBETH', 'CBETH') {
         _underlyingToken = underlyingToken;
         _exchangeRate = 1000000000000000000;
     }
@@ -22,7 +22,7 @@ contract STETHMock is ERC20Mock {
         return 18;
     }
 
-    function stEthPerToken() external view returns (uint256) {
+    function exchangeRate() external view returns (uint256) {
         return _exchangeRate;
     }
 
@@ -33,4 +33,5 @@ contract STETHMock is ERC20Mock {
     function underlying() external view returns (address) {
         return _underlyingToken;
     }
+
 }
