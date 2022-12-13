@@ -1,7 +1,6 @@
 # stETH Collateral Plugin - Layer3 Reserve Hackathon Submission
 
 
-
 ## Author
 
 We would like to acknowledge that this was a collaborative effort by  the web3 research and development team at [Layer3 Software](https://www.layer3.software/) 
