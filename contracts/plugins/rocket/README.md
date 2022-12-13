@@ -12,6 +12,8 @@ We would like to acknowledge that this was a collaborative effort by  the web3 r
 - Email: [Contact Layer3](contact@layer3.software) 
 - Org GitHub: [@Layer3 Software](https://github.com/Layer3-Software)
 
+![image](https://uploads-ssl.webflow.com/6202f5f1da3682ebbebcc8b7/62b07ff9501088196d34fb01_layer3-row-light-medium-p-500.png)
+
 ## Introduction 
 
 
