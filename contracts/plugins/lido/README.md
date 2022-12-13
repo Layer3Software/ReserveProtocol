@@ -11,6 +11,8 @@ We would like to acknowledge that this was a collaborative effort by  the web3 r
 - Email: [Contact Layer3](contact@layer3.software) 
 - Org GitHub: [@Layer3 Software](https://github.com/Layer3-Software)
 
+![image](https://uploads-ssl.webflow.com/6202f5f1da3682ebbebcc8b7/62b07ff9501088196d34fb01_layer3-row-light-medium-p-500.png)
+
 ## Introduction
 
 stETH is a ERC20 token that represents ether staked with Lido. Unlike staked ether, it is liquid and can be transferred, traded, or used in DeFi applications. Total supply of stETH reflects amount of ether deposited into protocol combined with staking rewards, minus potential validator penalties. stETH tokens are minted upon ether deposit at 1:1 ratio. When withdrawals from the Beacon chain will be introduced, it will also be possible to redeem ether by burning stETH at the same 1:1 ratio.
