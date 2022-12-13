@@ -1,6 +1,6 @@
 
-# Project Title
-rETH Collateral Plugin - Layer3 Hackathon Submission
+# rETH Collateral Plugin - Layer3 Hackathon Submission
+
 
 
 ## Author
