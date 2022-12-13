@@ -148,3 +148,6 @@ The pricefeed should be in {UoA} / {target} which is: USD/ETH
 Then input in the console:
 `yarn test:rocket`
 
+## Ref Docs
+[RocketPool Documents](https://docs.rocketpool.net/guides/)
+[RocketPool Technical Docs](https://github.com/rocket-pool/docs.rocketpool.net)
