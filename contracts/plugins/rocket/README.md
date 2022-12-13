@@ -5,7 +5,7 @@
 
 ## Author
 
-We would like to acknowledged that this was a collaborative effort by  the web3 research and development team (Layer3 Software) 
+We would like to acknowledge that this was a collaborative effort by  the web3 research and development team (Layer3 Software) 
 
 - Twitter: [Layer3 Software](https://twitter.com/Layer3Software)
 - Linkedin: [Layer3](https://www.linkedin.com/company/layer-3/) 
