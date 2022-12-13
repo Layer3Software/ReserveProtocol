@@ -11,7 +11,7 @@ We would like to acknowledge that this was a collaborative effort by  the web3 r
 - Linkedin: [Layer3](https://www.linkedin.com/company/layer-3/) 
 - Email: [Contact Layer3](contact@layer3.software) 
 - Org GitHub: [@Layer3 Software](https://github.com/Layer3-Software)
--  Discord contact: Nick - Layer3#9425
+
 ## Introduction 
 
 
