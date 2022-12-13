@@ -51,12 +51,77 @@ Below we have designed flow charts of scenarios to demonstrate this mechanism wo
 ## Scenario instance
 
 
-**Scenario #1: refPrice > prevRefPrice ** 
+**Scenario #1: refPrice > prevRefPrice** 
 
 
 When this happens, the prevRefPrice moves up, so we are essentially moving up our “stop loss”.
 
 ![graph](https://i.imgur.com/BZlHdju.png)
 
+**Scenario #2: refPrice < prevRefPrice but actualRefPrice > prevRefPrice**
+
+When this happens, it means the exchange rate has dropped, but it has not dropped more than 1%, so the collateral is SOUND but it is getting close to its default threshold. In this case, prevRefPrice does not get updated but stays the same. As mentioned previously, When prevRefPrice gets updated, it can only stay the same or go up, never can go down.
+
+![graph](https://i.imgur.com/ywh0968.png)
+
+**Scenario #3: refPrice < prevRefPrice and actualRefPrice < prevRefPrice**
+
+When this happens, the exchange rate has dropped more than 1%, and something is off with the protocol functionality. This is where collateral will become DISABLED and can never become SOUND again.
+
+![graph](https://i.imgur.com/wkEYcPc.png)
 
 
+## Deployment
+
+An example deployment can be found in the testfile: [STETHCollateral.fork.test.ts](ReserveProtocol/test/plugins/lido/STETHCollateral.fork.test.ts)
+
+Constructor Arguments
+
+```bash
+uint192 fallbackPrice_ 
+fp('1')
+
+AggregatorV3Interface targetUnitUSDChainlinkFeed_
+Chainlink price feed for ETH price in terms of USD (USD/ETH)
+https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd
+
+IERC20Metadata erc20_
+wstETH contract address
+
+IERC20Metadata rewardERC20_
+0x0000000000000000000000000000000000000000 since there are no claimable rewards
+
+uint192 maxTradeVolume_
+The max trade volume, in UoA (USD)
+
+uint48 oracleTimeout_
+The number of seconds until a oracle value becomes invalid 
+ORACLE_TIMEOUT from import { ORACLE_TIMEOUT } from '../../fixtures'
+
+bytes32 targetName_
+Name of the target unit: “ETH”
+
+uint192 defaultThreshold_
+A value like 0.05 that represents a deviation tolerance. In this plugin we will use 0 because we assume that stETH will not deviate from ETH
+bn('0')
+
+uint256 delayUntilDefault_
+bn('86400')
+
+The pricefeed should be in {UoA} / {target} which is: USD/ETH 
+```
+
+## Testing
+
+`package.json` must have:
+`test:rocket` hardhat test [STETHCollateral.fork.test.ts](test/plugins/rocket/STETHCollateral.fork.test.ts)
+
+Then input in the console:
+`yarn test:lido`
+
+
+## Ref Docs
+
+[Lido Documents](https://docs.lido.fi/)
+
+[Lido Contracts](https://docs.lido.fi/contracts/wsteth)
