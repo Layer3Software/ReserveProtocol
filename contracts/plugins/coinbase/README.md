@@ -1,4 +1,4 @@
-# stETH Collateral Plugin - Layer3 Reserve Hackathon Submission
+# cbETH Collateral Plugin - Layer3 Reserve Hackathon Submission
 
 
 ## Author
