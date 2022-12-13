@@ -28,6 +28,7 @@ This receipt token (wstETH) is our {tok} for this particular plugin.
 | **Description** | wstETH | ETH  | ETH | USD   |
 
 
+## Implementation
 This plugin assumes that stETH is equal to ETH, the target. So it does not insure the stETH peg with ETH. Once ETH2 withdrawals are live this should be the case. 
 
 The wstETH value increases over time in proportion to the amount of value the pool has accrued from staking rewards. This is to say an initial deposit of 1 ETH converted to 1 wstETH will be worth 1.0448 ETH within an annualized period (based on the current APY of 4.48%). Over time, the wstETH exchange rate to stETH should consistently go up from staking reward, although it could potentially go down if there is a large slashing event for Lido node operators. Depositors can then redeem and exchange this wstETH for stETH at any point and in the future stETH will be able to be exchanged for ETH at any point.
